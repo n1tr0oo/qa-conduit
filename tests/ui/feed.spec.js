@@ -43,19 +43,20 @@ test.describe('Global Feed & Navigation', () => {
 
   test('tag filter changes active tab label', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator('.sidebar')).toBeVisible();
 
     const tags = page.locator('.sidebar button.tag-pill');
-    await tags.first().waitFor({ timeout: 10000 });
     const tagCount = await tags.count();
 
-    if (tagCount > 0) {
-      const tagText = (await tags.first().textContent()).trim();
-      await tags.first().click();
-
-      await expect(page.locator('.feed-toggle button.active')).toContainText(tagText);
-    } else {
+    if (tagCount === 0) {
       test.skip();
+      return;
     }
+
+    const tagText = (await tags.first().textContent()).trim();
+    await tags.first().click();
+
+    await expect(page.locator('.feed-toggle button.active')).toContainText(tagText);
   });
 
   test('authenticated user sees Your Feed tab', async ({ page }) => {

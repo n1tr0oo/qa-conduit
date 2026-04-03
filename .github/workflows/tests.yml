@@ -74,6 +74,18 @@ jobs:
             -d '{"user":{"username":"qa_test","email":"qa_test@example.com","password":"password123"}}' \
             -o /dev/null -w "Create test user: HTTP %{http_code}\n"
 
+      - name: Create seed article with tag
+        run: |
+          TOKEN=$(curl -s -X POST http://localhost:3001/api/users/login \
+            -H "Content-Type: application/json" \
+            -d '{"user":{"email":"qa_test@example.com","password":"password123"}}' \
+            | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+          curl -s -X POST http://localhost:3001/api/articles \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Token $TOKEN" \
+            -d '{"article":{"title":"QA Seed Article","description":"Seed","body":"Seed body","tagList":["qa"]}}' \
+            -o /dev/null -w "Create seed article: HTTP %{http_code}\n"
+
       - name: Install QA dependencies
         run: npm install
 
