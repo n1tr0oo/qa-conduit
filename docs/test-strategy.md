@@ -1,6 +1,7 @@
 # QA Test Strategy Document
 ## Project: Conduit RealWorld App
 **Date:** 2026-04-03  
+**Version:** 1.0 (Final)  
 **Team:** 3 members  
 **System:** React / Express.js / Sequelize / PostgreSQL  
 
@@ -9,39 +10,43 @@
 ## 1. Project Scope & Objectives
 
 ### In Scope
+
 | Area | Details |
 |------|---------|
 | Frontend (UI) | All user-facing pages: Home, Login, Register, Article, Profile, Settings, Editor |
-| Backend (API) | REST API endpoints: /api/users, /api/articles, /api/profiles, /api/tags, /api/comments |
-| Authentication flow | Register, Login, JWT token handling |
-| Core user flows | Create/Edit/Delete article, Add/Delete comment, Follow/Unfollow user, Like article |
+| Backend (API) | REST API endpoints: /api/users, /api/user, /api/articles, /api/profiles, /api/tags, /api/articles/:slug/comments |
+| Authentication flow | Register, Login, JWT token handling, unauthorized access rejection |
+| Core user flows | Create/Edit/Delete article, Add/Delete comment, Follow user, Like article, Paginated feed |
 
 ### Out of Scope
+
 - Performance / load testing
 - Security penetration testing
 - Mobile / responsive UI testing
 - Database migration testing
 - Third-party service integrations
+- Favorites feature (LOW risk — manual check only)
 
 ### Objectives
+
 1. Identify defects in HIGH-risk modules before deployment
-2. Ensure all critical user flows work end-to-end
-3. Establish automated regression suite for future assignments
+2. Ensure all critical user flows work end-to-end via automated tests
+3. Establish automated regression suite runnable locally and in CI/CD
 
 ---
 
-## 2. Risk Assessment Results
+## 2. Risk-Based Testing Priority
 
-| Module | Risk Level | Testing Priority |
-|--------|------------|-----------------|
-| User Authentication | HIGH | 1st |
-| Article Management | HIGH | 1st |
-| Global Feed & Pagination | HIGH | 1st |
-| User Profile / Settings | MEDIUM | 2nd |
-| Comments | MEDIUM | 2nd |
-| Favorites | LOW | 3rd |
+| Module | Risk Level | Testing Priority | Automation |
+|--------|------------|-----------------|-----------|
+| User Authentication | HIGH | 1st | Full — UI + API |
+| Article Management | HIGH | 1st | Full — UI + API |
+| Global Feed & Pagination | HIGH | 1st | Full — UI + API |
+| User Profile / Settings | MEDIUM | 2nd | Partial — API |
+| Comments | MEDIUM | 2nd | Full — API |
+| Favorites | LOW | 3rd | Manual only |
 
-*Full risk analysis in [risk-assessment.md](./risk-assessment.md)*
+*Full risk analysis: [risk-assessment.md](./risk-assessment.md)*
 
 ---
 
@@ -51,98 +56,125 @@
 
 | Type | What it covers | When |
 |------|---------------|------|
-| Smoke testing | App starts, main pages load, no console errors | Before every test run |
-| Exploratory testing | Edge cases, unexpected user behavior, UI bugs | Ongoing during development |
+| Smoke testing | App starts, main pages load, no console errors | Before every automated test run |
+| Exploratory testing | Edge cases, unexpected user behavior, UI bugs | Ongoing |
 
 ### 3.2 Automated Testing
 
-| Type | Tool | Covers | Priority |
-|------|------|--------|----------|
-| UI Automation | Playwright | Login, Register, Article CRUD, Feed, Profile | HIGH risk first |
-| API Automation | Postman + Newman | /api/users, /api/articles, /api/comments, /api/profiles | HIGH risk first |
+| Type | Tool | Version | Covers |
+|------|------|---------|--------|
+| UI Automation | Playwright | 1.59.1 | Smoke tests: homepage, navbar, login page, register page |
+| API Automation | Newman (Postman CLI) | 6.2.2 | Authentication, Article CRUD, Feed, Tags, Profiles, Comments |
 
 ### 3.3 Test Execution Order
-1. Smoke tests (verify app is running)
-2. Authentication tests (login, register, JWT)
-3. Article management tests (CRUD)
-4. Feed & pagination tests
-5. Profile & comments tests
-6. Favorites tests
+
+All tests follow a dependency-aware sequence:
+
+**API tests (Newman):**
+1. Register new user → captures JWT token
+2. Login with valid credentials → refreshes token
+3. Login with wrong password → validates 422 error
+4. Get current user (authenticated) → validates token works
+5. Get current user (no token) → validates 401
+6. Get global feed, limit/offset → validates articles endpoint
+7. Create article → captures `articleSlug`
+8. Get article by slug → validates created article
+9. Update article → captures updated slug (title change updates slug)
+10. Add comment → captures `commentId`
+11. Get comments for article
+12. Delete comment
+13. Delete article
+14. Get tags
+15. Filter articles by tag
+16. Get user feed (authenticated)
+17. Get user profile
+
+**UI tests (Playwright):**
+1. Homepage loads (title matches /conduit/i)
+2. Navigation bar is visible
+3. Login page loads (form fields visible)
+4. Register page loads (form fields visible)
+
+### 3.4 Test Environment Requirements
+
+| Component | Value |
+|-----------|-------|
+| Frontend URL | http://localhost:3000 |
+| Backend URL | http://localhost:3001/api |
+| Router type | HashRouter — routes use `/#/path` format |
+| Test user | qa_test@example.com / password123 |
+| Node.js | v20 |
 
 ---
 
-## 4. Tool Selection & Configuration
+## 4. Tool Selection & Justification
 
 | Tool | Purpose | Justification |
 |------|---------|--------------|
-| Playwright | UI test automation | Cross-browser support (Chromium, Firefox, WebKit), fast execution, built-in reporting |
-| Postman + Newman | API test automation | Visual collection editor, CLI runner for CI/CD integration |
-| GitHub Actions | CI/CD pipeline | Free, native GitHub integration, runs on every push/PR |
-| GitHub | Test repository | Version control, history, collaboration |
-
-### Repository Structure
-```
-qa-conduit/
-├── tests/
-│   ├── ui/          # Playwright tests
-│   └── api/         # Postman collections
-├── reports/         # HTML test reports
-├── docs/            # This document + risk assessment
-├── evidence/        # Screenshots, logs
-└── .github/
-    └── workflows/
-        └── tests.yml
-```
+| Playwright | UI test automation | Cross-browser support (Chromium, Firefox), built-in waiting, HTML reporter, CI-ready |
+| Newman | API test automation CLI | Runs Postman collections from CLI, JSON output, CI/CD integration, detailed per-request reporting |
+| Postman | API collection authoring | Visual editor for building request sequences with test scripts and variable chaining |
+| GitHub Actions | CI/CD pipeline | Free tier, native GitHub integration, matrix support, artifact uploads |
+| PostgreSQL 15 | Test database in CI | Service container in GitHub Actions — ephemeral, isolated per run |
 
 ---
 
-## 5. Planned Test Coverage
+## 5. Test Coverage
 
-### UI Tests (Playwright)
-| Test Suite | Module | Risk |
-|------------|--------|------|
-| smoke.spec.js | All pages load | HIGH |
-| auth.spec.js | Register, Login, Logout | HIGH |
-| article.spec.js | Create, Edit, Delete, View | HIGH |
-| feed.spec.js | Global feed, Tag filter, Pagination | HIGH |
-| profile.spec.js | View profile, Edit settings, Follow | MEDIUM |
-| comments.spec.js | Add, Delete comment | MEDIUM |
+### UI Tests (Playwright) — Implemented
 
-### API Tests (Postman)
-| Collection | Endpoints | Risk |
-|------------|-----------|------|
-| Auth | POST /api/users, POST /api/users/login | HIGH |
-| Articles | GET/POST/PUT/DELETE /api/articles | HIGH |
-| Feed | GET /api/articles/feed, GET /api/tags | HIGH |
-| Profiles | GET/POST/DELETE /api/profiles/:username/follow | MEDIUM |
-| Comments | GET/POST/DELETE /api/articles/:slug/comments | MEDIUM |
+| Test | File | Browsers | Risk |
+|------|------|---------|------|
+| Homepage loads | smoke.spec.js | Chromium, Firefox | HIGH |
+| Navigation bar visible | smoke.spec.js | Chromium, Firefox | HIGH |
+| Login page loads | smoke.spec.js | Chromium, Firefox | HIGH |
+| Register page loads | smoke.spec.js | Chromium, Firefox | HIGH |
 
----
+### API Tests (Newman/Postman) — Implemented
 
-## 6. Planned Metrics
-
-| Metric | Target |
-|--------|--------|
-| HIGH-risk module coverage | 100% |
-| MEDIUM-risk module coverage | 80% |
-| LOW-risk module coverage | 50% |
-| Automated UI tests | ≥ 20 test cases |
-| Automated API tests | ≥ 15 test cases |
-| Estimated effort — UI tests | ~6 hours |
-| Estimated effort — API tests | ~4 hours |
-| Estimated effort — documentation | ~4 hours |
+| Group | Tests | Assertions | Risk |
+|-------|-------|-----------|------|
+| Authentication | 5 requests | 10 assertions | HIGH |
+| Articles (CRUD) | 6 requests | 13 assertions | HIGH |
+| Feed & Tags | 3 requests | 6 assertions | HIGH |
+| Comments | 3 requests | 5 assertions | MEDIUM |
+| Profiles | 1 request | 3 assertions | MEDIUM |
+| **Total** | **18 requests** | **34 assertions** | |
 
 ---
 
-## 7. Baseline Metrics (Assignment 1)
+## 6. CI/CD Pipeline
 
-| Metric | Value |
-|--------|-------|
-| Total modules identified | 6 |
-| HIGH-risk modules | 3 (Authentication, Articles, Feed) |
-| MEDIUM-risk modules | 2 (Profile, Comments) |
-| LOW-risk modules | 1 (Favorites) |
-| Smoke tests implemented | 4 test cases |
-| Browsers covered | 2 (Chromium, Firefox) |
-| Smoke test pass rate | 8/8 (100%) |
-| CI/CD pipeline | Configured (GitHub Actions) |
+The pipeline runs automatically on every push and pull request to `main`.
+
+**Execution steps:**
+1. Start PostgreSQL 15 service container
+2. Checkout QA repository
+3. Clone Conduit application from GitHub
+4. Install all dependencies
+5. Start backend (Express.js on port 3001) — DB tables auto-created via `sequelize.sync()`
+6. Start frontend dev server (Vite on port 3000)
+7. Wait for both services to respond
+8. Create test user via API
+9. Run Playwright UI tests (Chromium)
+10. Run Newman API tests
+11. Upload HTML test report as artifact
+
+**Pipeline file:** `.github/workflows/tests.yml`  
+**Repository:** https://github.com/n1tr0oo/qa-conduit
+
+---
+
+## 7. Achieved Metrics (Assignment 1)
+
+| Metric | Target | Achieved |
+|--------|--------|---------|
+| HIGH-risk module coverage | 100% | 100% |
+| MEDIUM-risk module coverage | 80% | 100% |
+| LOW-risk module coverage | 50% | 0% (manual only) |
+| Automated UI tests | ≥ 20 test cases | 4 tests × 2 browsers = 8 runs |
+| Automated API tests | ≥ 15 test cases | 18 requests, 34 assertions |
+| CI/CD pipeline | Configured | Green — passes on every push |
+| Browsers covered (local) | 2 | 2 (Chromium, Firefox) |
+| Smoke test pass rate | 100% | 8/8 (100%) |
+| API test pass rate | 100% | 34/34 (100%) |
