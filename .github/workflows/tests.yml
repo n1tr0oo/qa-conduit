@@ -52,7 +52,6 @@ jobs:
           DEV_DB_NAME: conduit_ci
           DEV_DB_HOSTNAME: localhost
           DEV_DB_DIALECT: postgres
-          DEV_DB_LOGGING: "false"
         run: node index.js > /tmp/backend.log 2>&1 &
 
       - name: Start frontend dev server
