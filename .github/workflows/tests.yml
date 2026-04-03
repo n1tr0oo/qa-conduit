@@ -9,21 +9,89 @@ on:
 jobs:
   playwright-tests:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduit
+          POSTGRES_DB: conduit_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Install dependencies
+      - name: Clone Conduit app
+        run: git clone https://github.com/TonyMckes/conduit-realworld-example-app.git conduit-app
+
+      - name: Install app dependencies
+        working-directory: conduit-app
+        run: npm install
+
+      - name: Run database migrations
+        working-directory: conduit-app/backend
+        env:
+          NODE_ENV: development
+          DEV_DB_USERNAME: conduit
+          DEV_DB_PASSWORD: conduit
+          DEV_DB_NAME: conduit_ci
+          DEV_DB_HOSTNAME: localhost
+          DEV_DB_DIALECT: postgres
+          DEV_DB_LOGGING: "false"
+        run: npx sequelize-cli db:migrate
+
+      - name: Start backend
+        working-directory: conduit-app/backend
+        env:
+          NODE_ENV: development
+          PORT: 3001
+          JWT_KEY: ci_test_secret_key
+          DEV_DB_USERNAME: conduit
+          DEV_DB_PASSWORD: conduit
+          DEV_DB_NAME: conduit_ci
+          DEV_DB_HOSTNAME: localhost
+          DEV_DB_DIALECT: postgres
+          DEV_DB_LOGGING: "false"
+        run: node index.js &
+
+      - name: Start frontend dev server
+        working-directory: conduit-app
+        run: npm run dev -w frontend &
+
+      - name: Wait for backend and frontend
+        run: npx wait-on http://localhost:3001/api/tags http://localhost:3000 --timeout 60000
+
+      - name: Create test user
+        run: |
+          curl -s -X POST http://localhost:3001/api/users \
+            -H "Content-Type: application/json" \
+            -d '{"user":{"username":"qa_test","email":"qa_test@example.com","password":"password123"}}' \
+            -o /dev/null -w "Create test user: HTTP %{http_code}\n"
+
+      - name: Install QA dependencies
         run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: npx playwright test
+        run: npx playwright test --project=chromium
+
+      - name: Run Newman API tests
+        run: npx newman run tests/api/conduit.postman_collection.json
 
       - name: Upload test report
         uses: actions/upload-artifact@v4
