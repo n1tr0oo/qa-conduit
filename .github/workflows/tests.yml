@@ -80,16 +80,99 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # ── Quality Gate 1: UI Tests (pass rate must be 100%) ──────────────────
       - name: Run Playwright tests
-        run: npx playwright test --project=chromium
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: reports/junit/playwright-results.xml
+        run: npx playwright test --project=chromium --reporter=html,list,junit
 
+      # ── Quality Gate 2: API Tests (all 34 assertions must pass) ────────────
       - name: Run Newman API tests
-        run: npx newman run tests/api/conduit.postman_collection.json
+        run: |
+          npx newman run tests/api/conduit.postman_collection.json \
+            --reporters cli,junit \
+            --reporter-junit-export reports/junit/newman-results.xml
 
-      - name: Upload test report
+      # ── Quality Gate 3: Threshold check ────────────────────────────────────
+      - name: Quality Gate — verify thresholds
+        if: always()
+        run: |
+          echo "================================================"
+          echo "         QUALITY GATE THRESHOLD CHECK"
+          echo "================================================"
+          echo "Thresholds:"
+          echo "  UI test pass rate     : 100% required"
+          echo "  API assertion pass rate: 100% required"
+          echo "  Critical defects       : 0 allowed"
+          echo "------------------------------------------------"
+
+          GATE_FAILED=0
+
+          if [ -f reports/junit/playwright-results.xml ]; then
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' reports/junit/playwright-results.xml | head -1)
+            ERRORS=$(grep -oP 'errors="\K[0-9]+' reports/junit/playwright-results.xml | head -1)
+            TESTS=$(grep -oP 'tests="\K[0-9]+' reports/junit/playwright-results.xml | head -1)
+            FAILURES=${FAILURES:-0}; ERRORS=${ERRORS:-0}; TESTS=${TESTS:-0}
+            echo "UI Tests  : $TESTS total | $FAILURES failed | $ERRORS errors"
+            if [ "$FAILURES" -gt 0 ] || [ "$ERRORS" -gt 0 ]; then
+              echo "  => GATE FAILED: UI pass rate below 100%"
+              GATE_FAILED=1
+            else
+              echo "  => GATE PASSED"
+            fi
+          else
+            echo "UI Tests  : result file not found"
+            GATE_FAILED=1
+          fi
+
+          if [ -f reports/junit/newman-results.xml ]; then
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' reports/junit/newman-results.xml | head -1)
+            TESTS=$(grep -oP 'tests="\K[0-9]+' reports/junit/newman-results.xml | head -1)
+            FAILURES=${FAILURES:-0}; TESTS=${TESTS:-0}
+            echo "API Tests : $TESTS assertions | $FAILURES failed"
+            if [ "$FAILURES" -gt 0 ]; then
+              echo "  => GATE FAILED: API pass rate below 100%"
+              GATE_FAILED=1
+            else
+              echo "  => GATE PASSED"
+            fi
+          else
+            echo "API Tests : result file not found"
+            GATE_FAILED=1
+          fi
+
+          echo "------------------------------------------------"
+          if [ "$GATE_FAILED" -eq 1 ]; then
+            echo "RESULT: QUALITY GATE FAILED — deploy blocked"
+            exit 1
+          else
+            echo "RESULT: ALL QUALITY GATES PASSED — deploy allowed"
+          fi
+          echo "================================================"
+
+      # ── Publish test results to GitHub Actions summary ─────────────────────
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Test Results
+          path: reports/junit/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      # ── Upload all artifacts ────────────────────────────────────────────────
+      - name: Upload Playwright HTML report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report
           path: reports/html/
+          retention-days: 7
+
+      - name: Upload JUnit XML reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-results
+          path: reports/junit/
           retention-days: 7
