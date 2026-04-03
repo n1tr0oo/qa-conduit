@@ -1,0 +1,29 @@
+{
+  "name": "qa-conduit",
+  "version": "1.0.0",
+  "description": "**Conduit RealWorld App** — a blogging platform built with React / Express.js / Sequelize / PostgreSQL.\r - Repository: https://github.com/TonyMckes/conduit-realworld-example-app\r - Local Frontend: http://localhost:3000\r - Local Backend: http://localhost:3001",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:report": "playwright show-report reports/html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n1tr0oo/qa-conduit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/n1tr0oo/qa-conduit/issues"
+  },
+  "homepage": "https://github.com/n1tr0oo/qa-conduit#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
