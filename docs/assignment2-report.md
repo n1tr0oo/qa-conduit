@@ -160,16 +160,17 @@ pm.environment.set("commentId", pm.response.json().comment.id.toString());
 
 | Commit ID / Hash | Date | Module/Feature | Description of Changes | Author |
 |---|---|---|---|---|
-| `76bd401` | 03/04/2026 | — | Initial commit — repository structure | n1tr0oo |
-| `2902149` | 03/04/2026 | All modules | Assignment 1: QA environment setup, smoke tests (4), risk assessment, test strategy documents | n1tr0oo |
-| `5deb370` | 03/04/2026 | API — All | Newman/Postman collection — 18 requests, 34 assertions, all passing locally | n1tr0oo |
-| `8e22eed` | 03/04/2026 | CI/CD | GitHub Actions pipeline — PostgreSQL service, clone app, start backend + frontend, wait-on | n1tr0oo |
-| `c7a4d20` | 03/04/2026 | CI/CD | Fix backend startup — remove manual migrations, capture backend logs to `/tmp/backend.log` | n1tr0oo |
-| `24386e1` | 03/04/2026 | CI/CD | Fix Sequelize logging — remove `DEV_DB_LOGGING` env var (string "false" caused TypeError) | n1tr0oo |
-| `5267125` | 03/04/2026 | Documentation | Finalize Assignment 1 deliverables — baseline metrics, environment setup docs | n1tr0oo |
-| `5d95bf3` | 03/04/2026 | Auth, Articles, Feed | Assignment 2: auth.spec.js (6 tests), articles.spec.js (5 tests), feed.spec.js (8 tests), quality gates in CI, JUnit reporters, dorny/test-reporter, seed data step, assignment2-report.md | n1tr0oo |
-| `3deccd4` | 03/04/2026 | Feed, CI/CD | Fix CI tag filter — remove `waitFor` timeout, use `count()` + `test.skip()`; add seed article with tag curl step in workflow | n1tr0oo |
-| `6b44302` | 03/04/2026 | CI/CD | Fix dorny/test-reporter — add `permissions: checks: write` to job | n1tr0oo |
+| `c3d3389` | 03/04/2026 | — | Initial commit — repository structure | n1tr0oo |
+| `5e23e94` | 03/04/2026 | All modules | Assignment 1: QA environment setup, smoke tests (4), risk assessment, test strategy documents | n1tr0oo |
+| `a698434` | 03/04/2026 | API — All | Newman/Postman collection — 18 requests, 34 assertions, all passing locally | n1tr0oo |
+| `dd8588b` | 03/04/2026 | CI/CD | GitHub Actions pipeline — PostgreSQL service, clone app, start backend + frontend, wait-on | n1tr0oo |
+| `cce703f` | 03/04/2026 | CI/CD | Fix backend startup — remove manual migrations, capture backend logs to `/tmp/backend.log` | n1tr0oo |
+| `0740c77` | 03/04/2026 | CI/CD | Fix Sequelize logging — remove `DEV_DB_LOGGING` env var (string "false" caused TypeError) | n1tr0oo |
+| `2cf5e25` | 03/04/2026 | Documentation | Finalize Assignment 1 deliverables — baseline metrics, environment setup docs | n1tr0oo |
+| `22e8d53` | 03/04/2026 | Auth, Articles, Feed | Assignment 2: auth.spec.js (6 tests), articles.spec.js (5 tests), feed.spec.js (8 tests), quality gates in CI, JUnit reporters, dorny/test-reporter, seed data step, assignment2-report.md | n1tr0oo |
+| `2020702` | 03/04/2026 | Feed, CI/CD | Fix CI tag filter — remove `waitFor` timeout, use `count()` + `test.skip()`; add seed article with tag curl step in workflow | n1tr0oo |
+| `1316008` | 03/04/2026 | CI/CD | Fix dorny/test-reporter — add `permissions: checks: write` to job | n1tr0oo |
+| `df5792d` | 04/04/2026 | Documentation | Complete Assignment 2 report — all tables filled per assignment PDF structure | n1tr0oo |
 
 ---
 
