@@ -6,28 +6,43 @@ on:
   pull_request:
     branches: [main]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Shared app-startup anchor — reused in api-tests and e2e-tests via YAML anchors
-# (GitHub Actions does not support true YAML anchors; steps are duplicated
-#  intentionally so each job is fully self-contained on its own runner)
-# ─────────────────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#  Job dependency graph:
+#
+#  build ──────────────────────────────────────┐
+#                                              ├─→ unit-tests ──────┐
+#                                              ├─→ api-tests ───────┤
+#                                              └─→ e2e-tests ───────┤
+#                                                                    │
+#                                              ┌─────────────────────┤
+#                                              │                     │
+#                                        allure-report         quality-gate
+#                                        (if: always)          (if: always)
+#
+#  Stage 1 — build        : install deps, cache node_modules, verify structure
+#  Stage 2 — tests        : unit / api / e2e run in parallel, each uploads artifacts
+#  Stage 3 — reporting    : allure-report merges results → dashboard
+#             gate        : quality-gate parses JUnit XML → pass/fail verdict
+#
+# ═══════════════════════════════════════════════════════════════════════════════
 
 jobs:
 
-  # ══════════════════════════════════════════════════════════════════════════
-  # JOB 1 — Unit Tests
-  # Pure logic tests — no database, no HTTP, no browser
-  # Runs in parallel with api-tests and e2e-tests for speed
-  # ══════════════════════════════════════════════════════════════════════════
-  unit-tests:
-    name: Unit Tests
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 1 — BUILD
+  # Installs QA dependencies, caches node_modules, verifies test structure.
+  # All test jobs depend on this job and restore from cache — no redundant installs.
+  # ════════════════════════════════════════════════════════════════════════════
+  build:
+    name: "Build — Install & Verify"
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout QA repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -35,17 +50,69 @@ jobs:
       - name: Install QA dependencies
         run: npm install
 
+      - name: Cache QA node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Verify test directory structure
+        run: |
+          echo "──────────────────────────────────"
+          echo " QA Repo — File Structure Check"
+          echo "──────────────────────────────────"
+          echo "Unit tests:"
+          ls tests/unit/
+          echo "UI tests:"
+          ls tests/ui/
+          echo "API collections:"
+          ls tests/api/
+          echo "Docs:"
+          ls docs/
+          echo "──────────────────────────────────"
+          echo "BUILD VERIFIED"
+
+      - name: Verify Playwright config
+        run: node -e "import('./playwright.config.js').then(c => console.log('playwright.config.js OK — projects:', c.default.projects.map(p => p.name).join(', ')))"
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2 — UNIT TESTS
+  # Pure logic tests — no database, no HTTP, no browser.
+  # Fastest job (~15 sec). Fails fast if core logic is broken.
+  # ════════════════════════════════════════════════════════════════════════════
+  unit-tests:
+    name: "Test — Unit (node:test)"
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore QA node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Run unit tests
         run: node --test tests/unit/*.test.mjs
 
-  # ══════════════════════════════════════════════════════════════════════════
-  # JOB 2 — API Tests (Integration level)
-  # Starts the full app stack, runs Newman main suite + edge-case suite
-  # Uploads JUnit XML artifacts consumed by quality-gate job
-  # ══════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2 — API TESTS (integration level)
+  # Starts PostgreSQL + Express backend only (no frontend needed for API tests).
+  # Runs two Newman collections: main suite + edge-case suite.
+  # Uploads JUnit XML (for quality-gate) and Allure results (for dashboard).
+  # ════════════════════════════════════════════════════════════════════════════
   api-tests:
-    name: API Tests (Newman)
+    name: "Test — API Integration (Newman)"
     runs-on: ubuntu-latest
+    needs: build
     permissions:
       contents: read
 
@@ -68,11 +135,18 @@ jobs:
       - name: Checkout QA repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Restore QA node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # ── App setup ────────────────────────────────────────────────────────
       - name: Clone Conduit app
         run: git clone https://github.com/TonyMckes/conduit-realworld-example-app.git conduit-app
 
@@ -80,7 +154,7 @@ jobs:
         working-directory: conduit-app
         run: npm install
 
-      - name: Start backend
+      - name: Start backend (Express, port 3001)
         working-directory: conduit-app/backend
         env:
           NODE_ENV: development
@@ -98,8 +172,9 @@ jobs:
 
       - name: Show backend log on failure
         if: failure()
-        run: cat /tmp/backend.log || echo "No backend log found"
+        run: cat /tmp/backend.log || echo "No backend log"
 
+      # ── Seed data ────────────────────────────────────────────────────────
       - name: Create test user
         run: |
           curl -s -X POST http://localhost:3001/api/users \
@@ -119,21 +194,22 @@ jobs:
             -d '{"article":{"title":"QA Seed Article","description":"Seed","body":"Seed body","tagList":["qa"]}}' \
             -o /dev/null -w "Create seed article: HTTP %{http_code}\n"
 
-      - name: Install QA dependencies
-        run: npm install
-
-      - name: Run Newman — main API suite
+      # ── Test execution ────────────────────────────────────────────────────
+      - name: Run Newman — main API suite (18 requests / 34 assertions)
         run: |
           npx newman run tests/api/conduit.postman_collection.json \
-            --reporters cli,junit \
-            --reporter-junit-export reports/junit/newman-results.xml
+            --reporters cli,junit,allure \
+            --reporter-junit-export reports/junit/newman-results.xml \
+            --reporter-allure-export allure-results
 
-      - name: Run Newman — edge-case API suite
+      - name: Run Newman — edge-case API suite (8 requests / 15 assertions)
         run: |
           npx newman run tests/api/conduit-edge-cases.postman_collection.json \
-            --reporters cli,junit \
-            --reporter-junit-export reports/junit/newman-edge-results.xml
+            --reporters cli,junit,allure \
+            --reporter-junit-export reports/junit/newman-edge-results.xml \
+            --reporter-allure-export allure-results
 
+      # ── Artifacts ────────────────────────────────────────────────────────
       - name: Upload API JUnit results
         uses: actions/upload-artifact@v4
         if: always()
@@ -142,14 +218,24 @@ jobs:
           path: reports/junit/newman*.xml
           retention-days: 7
 
-  # ══════════════════════════════════════════════════════════════════════════
-  # JOB 3 — E2E Tests (Playwright)
-  # Starts the full app stack (frontend + backend), runs all Playwright specs
-  # Uploads JUnit XML + HTML report artifacts
-  # ══════════════════════════════════════════════════════════════════════════
+      - name: Upload API Allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-api
+          path: allure-results/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2 — E2E TESTS (end-to-end / browser level)
+  # Starts full stack: PostgreSQL + Express backend + Vite frontend + Chromium.
+  # Runs all Playwright specs (smoke, auth, articles, feed, edge-cases).
+  # Uploads JUnit XML, HTML report, and Allure results.
+  # ════════════════════════════════════════════════════════════════════════════
   e2e-tests:
-    name: E2E Tests (Playwright)
+    name: "Test — E2E Browser (Playwright / Chromium)"
     runs-on: ubuntu-latest
+    needs: build
     permissions:
       contents: read
 
@@ -172,11 +258,18 @@ jobs:
       - name: Checkout QA repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Restore QA node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # ── App setup ────────────────────────────────────────────────────────
       - name: Clone Conduit app
         run: git clone https://github.com/TonyMckes/conduit-realworld-example-app.git conduit-app
 
@@ -184,7 +277,7 @@ jobs:
         working-directory: conduit-app
         run: npm install
 
-      - name: Start backend
+      - name: Start backend (Express, port 3001)
         working-directory: conduit-app/backend
         env:
           NODE_ENV: development
@@ -197,7 +290,7 @@ jobs:
           DEV_DB_DIALECT: postgres
         run: node index.js > /tmp/backend.log 2>&1 &
 
-      - name: Start frontend dev server
+      - name: Start frontend (Vite, port 3000)
         working-directory: conduit-app
         env:
           VITE_PORT: 3000
@@ -208,8 +301,9 @@ jobs:
 
       - name: Show backend log on failure
         if: failure()
-        run: cat /tmp/backend.log || echo "No backend log found"
+        run: cat /tmp/backend.log || echo "No backend log"
 
+      # ── Seed data ────────────────────────────────────────────────────────
       - name: Create test user
         run: |
           curl -s -X POST http://localhost:3001/api/users \
@@ -229,17 +323,14 @@ jobs:
             -d '{"article":{"title":"QA Seed Article","description":"Seed","body":"Seed body","tagList":["qa"]}}' \
             -o /dev/null -w "Create seed article: HTTP %{http_code}\n"
 
-      - name: Install QA dependencies
-        run: npm install
-
+      # ── Test execution ────────────────────────────────────────────────────
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: reports/junit/playwright-results.xml
-        run: npx playwright test --project=chromium --reporter=html,list,junit
+      - name: Run Playwright tests (28 tests — chromium)
+        run: npx playwright test --project=chromium
 
+      # ── Artifacts ────────────────────────────────────────────────────────
       - name: Upload Playwright HTML report
         uses: actions/upload-artifact@v4
         if: always()
@@ -248,7 +339,7 @@ jobs:
           path: reports/html/
           retention-days: 7
 
-      - name: Upload Playwright JUnit results
+      - name: Upload E2E JUnit results
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -256,13 +347,93 @@ jobs:
           path: reports/junit/playwright-results.xml
           retention-days: 7
 
-  # ══════════════════════════════════════════════════════════════════════════
-  # JOB 4 — Quality Gate
-  # Runs after all test jobs complete (pass or fail)
-  # Downloads all JUnit artifacts, parses thresholds, publishes summary
-  # ══════════════════════════════════════════════════════════════════════════
+      - name: Upload E2E Allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-e2e
+          path: allure-results/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 3 — ALLURE REPORT (dashboard)
+  # Downloads Allure result files from api-tests and e2e-tests,
+  # merges them into one directory, generates the full HTML dashboard,
+  # and uploads it as artifact "allure-dashboard".
+  #
+  # Open locally: download artifact → unzip → open index.html
+  # ════════════════════════════════════════════════════════════════════════════
+  allure-report:
+    name: "Report — Allure Dashboard"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, api-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore QA node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # ── Download all Allure result artifacts ─────────────────────────────
+      - name: Download API Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-api
+          path: allure-results/
+        continue-on-error: true
+
+      - name: Download E2E Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-e2e
+          path: allure-results/
+        continue-on-error: true
+
+      # ── Generate Allure HTML report ───────────────────────────────────────
+      - name: List merged allure-results
+        run: |
+          echo "Total result files: $(ls allure-results/ 2>/dev/null | wc -l)"
+          ls allure-results/ 2>/dev/null || echo "No results found"
+
+      - name: Generate Allure report
+        run: npx allure generate allure-results --clean -o allure-report
+
+      - name: Print Allure report summary
+        run: |
+          echo "──────────────────────────────────────"
+          echo " Allure Report Generated"
+          echo "──────────────────────────────────────"
+          echo "Files: $(ls allure-report/ | wc -l)"
+          echo "Size:  $(du -sh allure-report/ | cut -f1)"
+          echo "──────────────────────────────────────"
+
+      # ── Upload final dashboard ────────────────────────────────────────────
+      - name: Upload Allure dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-dashboard
+          path: allure-report/
+          retention-days: 14
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 3 — QUALITY GATE
+  # Downloads JUnit XML from api-tests and e2e-tests.
+  # Checks numeric thresholds; reads unit-tests job result directly.
+  # Exits 1 (blocks merge) if any gate fails.
+  # Publishes results to GitHub "Test Results" tab via dorny/test-reporter.
+  # ════════════════════════════════════════════════════════════════════════════
   quality-gate:
-    name: Quality Gate
+    name: "Gate — Quality Thresholds"
     runs-on: ubuntu-latest
     needs: [unit-tests, api-tests, e2e-tests]
     if: always()
@@ -287,92 +458,84 @@ jobs:
 
       - name: Verify quality gate thresholds
         run: |
-          echo "================================================"
-          echo "         QUALITY GATE THRESHOLD CHECK"
-          echo "================================================"
-          echo "Thresholds:"
-          echo "  Unit tests             : must all pass (job-level)"
-          echo "  UI test pass rate      : 100% required"
-          echo "  API assertion pass rate: 100% required"
-          echo "  API edge-case rate     : 100% required"
-          echo "  Critical defects       : 0 allowed"
-          echo "------------------------------------------------"
+          echo "════════════════════════════════════════"
+          echo "        QUALITY GATE THRESHOLD CHECK    "
+          echo "════════════════════════════════════════"
+          echo " Gate  | Threshold        | Result"
+          echo "────────────────────────────────────────"
 
           GATE_FAILED=0
 
-          # ── E2E / Playwright ────────────────────────────────
+          # ── QG01: Unit Tests (job-level result) ──────────────────────────
+          UNIT_RESULT="${{ needs.unit-tests.result }}"
+          if [ "$UNIT_RESULT" = "success" ]; then
+            echo " QG01  | Unit tests pass  | PASSED ($UNIT_RESULT)"
+          else
+            echo " QG01  | Unit tests pass  | FAILED ($UNIT_RESULT)"
+            GATE_FAILED=1
+          fi
+
+          # ── QG02: E2E Tests (Playwright JUnit XML) ───────────────────────
           if [ -f reports/junit/playwright-results.xml ]; then
             FAILURES=$(grep -oP 'failures="\K[0-9]+' reports/junit/playwright-results.xml | head -1)
             ERRORS=$(grep -oP 'errors="\K[0-9]+' reports/junit/playwright-results.xml | head -1)
             TESTS=$(grep -oP 'tests="\K[0-9]+' reports/junit/playwright-results.xml | head -1)
             FAILURES=${FAILURES:-0}; ERRORS=${ERRORS:-0}; TESTS=${TESTS:-0}
-            echo "E2E Tests : $TESTS total | $FAILURES failed | $ERRORS errors"
-            if [ "$FAILURES" -gt 0 ] || [ "$ERRORS" -gt 0 ]; then
-              echo "  => GATE FAILED: E2E pass rate below 100%"
-              GATE_FAILED=1
+            TOTAL_FAIL=$((FAILURES + ERRORS))
+            if [ "$TOTAL_FAIL" -eq 0 ]; then
+              echo " QG02  | E2E 100% pass    | PASSED ($TESTS tests, 0 failures)"
             else
-              echo "  => GATE PASSED"
+              echo " QG02  | E2E 100% pass    | FAILED ($TESTS tests, $FAILURES failures, $ERRORS errors)"
+              GATE_FAILED=1
             fi
           else
-            echo "E2E Tests : result file not found — marking gate as failed"
+            echo " QG02  | E2E 100% pass    | FAILED (no result file)"
             GATE_FAILED=1
           fi
 
-          # ── Newman — main suite ─────────────────────────────
+          # ── QG03: API Main Suite (Newman JUnit XML) ──────────────────────
           if [ -f reports/junit/newman-results.xml ]; then
             FAILURES=$(grep -oP 'failures="\K[0-9]+' reports/junit/newman-results.xml | head -1)
             TESTS=$(grep -oP 'tests="\K[0-9]+' reports/junit/newman-results.xml | head -1)
             FAILURES=${FAILURES:-0}; TESTS=${TESTS:-0}
-            echo "API Main  : $TESTS assertions | $FAILURES failed"
-            if [ "$FAILURES" -gt 0 ]; then
-              echo "  => GATE FAILED: API main pass rate below 100%"
-              GATE_FAILED=1
+            if [ "$FAILURES" -eq 0 ]; then
+              echo " QG03  | API 100% pass    | PASSED ($TESTS assertions, 0 failures)"
             else
-              echo "  => GATE PASSED"
+              echo " QG03  | API 100% pass    | FAILED ($TESTS assertions, $FAILURES failures)"
+              GATE_FAILED=1
             fi
           else
-            echo "API Main  : result file not found — marking gate as failed"
+            echo " QG03  | API 100% pass    | FAILED (no result file)"
             GATE_FAILED=1
           fi
 
-          # ── Newman — edge-case suite ────────────────────────
+          # ── QG04: API Edge-Case Suite (Newman JUnit XML) ─────────────────
           if [ -f reports/junit/newman-edge-results.xml ]; then
             FAILURES=$(grep -oP 'failures="\K[0-9]+' reports/junit/newman-edge-results.xml | head -1)
             TESTS=$(grep -oP 'tests="\K[0-9]+' reports/junit/newman-edge-results.xml | head -1)
             FAILURES=${FAILURES:-0}; TESTS=${TESTS:-0}
-            echo "API Edge  : $TESTS assertions | $FAILURES failed"
-            if [ "$FAILURES" -gt 0 ]; then
-              echo "  => GATE FAILED: API edge-case pass rate below 100%"
-              GATE_FAILED=1
+            if [ "$FAILURES" -eq 0 ]; then
+              echo " QG04  | Edge 100% pass   | PASSED ($TESTS assertions, 0 failures)"
             else
-              echo "  => GATE PASSED"
+              echo " QG04  | Edge 100% pass   | FAILED ($TESTS assertions, $FAILURES failures)"
+              GATE_FAILED=1
             fi
           else
-            echo "API Edge  : result file not found — marking gate as failed"
+            echo " QG04  | Edge 100% pass   | FAILED (no result file)"
             GATE_FAILED=1
           fi
 
-          echo "------------------------------------------------"
-          # ── Unit test result comes from job exit code (unit-tests job) ──
-          UNIT_RESULT="${{ needs.unit-tests.result }}"
-          echo "Unit Tests: job result = $UNIT_RESULT"
-          if [ "$UNIT_RESULT" != "success" ]; then
-            echo "  => GATE FAILED: unit-tests job did not succeed"
-            GATE_FAILED=1
-          else
-            echo "  => GATE PASSED"
-          fi
-
-          echo "------------------------------------------------"
+          echo "────────────────────────────────────────"
           if [ "$GATE_FAILED" -eq 1 ]; then
-            echo "RESULT: QUALITY GATE FAILED — deploy blocked"
+            echo " RESULT → QUALITY GATE FAILED — deploy blocked"
+            echo "════════════════════════════════════════"
             exit 1
           else
-            echo "RESULT: ALL QUALITY GATES PASSED — deploy allowed"
+            echo " RESULT → ALL QUALITY GATES PASSED — deploy allowed"
+            echo "════════════════════════════════════════"
           fi
-          echo "================================================"
 
-      - name: Publish test results
+      - name: Publish test results to GitHub UI
         uses: dorny/test-reporter@v1
         if: always()
         with:

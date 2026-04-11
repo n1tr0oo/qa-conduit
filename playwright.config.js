@@ -4,12 +4,21 @@ export default defineConfig({
   testDir: './tests/ui',
   timeout: 30000,
   retries: 1,
-  reporter: [['html', { outputFolder: 'reports/html' }], ['list']],
+
+  // All reporters defined here — no --reporter CLI flag needed
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'reports/html', open: 'never' }],
+    ['junit', { outputFile: 'reports/junit/playwright-results.xml' }],
+    ['allure-playwright', { resultsDir: 'allure-results', detail: true }],
+  ],
+
   use: {
     baseURL: 'http://localhost:3000',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
+
   projects: [
     {
       name: 'chromium',
