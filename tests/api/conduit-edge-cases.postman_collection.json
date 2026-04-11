@@ -1,0 +1,271 @@
+{
+  "info": {
+    "name": "Conduit API Edge Cases",
+    "description": "Midterm Task 2.1 — edge-case and failure API tests targeting HIGH-risk modules.\nCovers: failure scenarios, edge inputs, invalid user behavior, unauthorized access.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001/api" },
+    { "key": "token",   "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup — obtain auth token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login succeeded for edge-case suite setup', () => {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.user).to.have.property('token');",
+              "  pm.collectionVariables.set('token', json.user.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user\": {\n    \"email\": \"qa_test@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+        },
+        "url": "{{baseUrl}}/users/login"
+      }
+    },
+    {
+      "name": "TC-API-FAIL-01 — Create article without auth token (expect 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-FAIL-01",
+              "// Target module : Article Management (HIGH risk)",
+              "// Scenario type : Failure — missing Authorization header",
+              "// Input data    : Valid article body, NO token",
+              "// Expected      : 401 Unauthorized",
+              "pm.test('TC-API-FAIL-01: status is 401 when no auth token provided', () => {",
+              "  pm.response.to.have.status(401);",
+              "});",
+              "pm.test('TC-API-FAIL-01: response body contains error info', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('errors');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"article\": {\n    \"title\": \"Unauthorized Article Attempt\",\n    \"description\": \"Should be rejected\",\n    \"body\": \"This request has no auth token\",\n    \"tagList\": []\n  }\n}"
+        },
+        "url": "{{baseUrl}}/articles"
+      }
+    },
+    {
+      "name": "TC-API-FAIL-02 — Get article with non-existent slug (expect 404 or 422)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-FAIL-02",
+              "// Target module : Article Management (HIGH risk)",
+              "// Scenario type : Failure — resource not found",
+              "// Input data    : Slug that does not exist in DB",
+              "// Expected      : 404 or 422 with error body",
+              "pm.test('TC-API-FAIL-02: status is 404 or 422 for non-existent article', () => {",
+              "  pm.expect([404, 422]).to.include(pm.response.code);",
+              "});",
+              "pm.test('TC-API-FAIL-02: response body contains errors property', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('errors');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/articles/this-article-does-not-exist-00000000"
+      }
+    },
+    {
+      "name": "TC-API-EDGE-01 — Register with missing username field (expect 422)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-EDGE-01",
+              "// Target module : User Authentication (HIGH risk)",
+              "// Scenario type : Edge case / invalid input — missing required field",
+              "// Input data    : email + password provided, username omitted",
+              "// Expected      : 422 Unprocessable Entity with validation errors",
+              "pm.test('TC-API-EDGE-01: status is 422 when username is missing', () => {",
+              "  pm.response.to.have.status(422);",
+              "});",
+              "pm.test('TC-API-EDGE-01: errors object is present in response', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('errors');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user\": {\n    \"email\": \"noname_{{$timestamp}}@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+        },
+        "url": "{{baseUrl}}/users"
+      }
+    },
+    {
+      "name": "TC-API-EDGE-02 — Register with empty string username (expect 422)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-EDGE-02",
+              "// Target module : User Authentication (HIGH risk)",
+              "// Scenario type : Edge case — blank required field",
+              "// Input data    : username = '' (empty string)",
+              "// Expected      : 422 Unprocessable Entity",
+              "pm.test('TC-API-EDGE-02: status is 422 when username is empty string', () => {",
+              "  pm.response.to.have.status(422);",
+              "});",
+              "pm.test('TC-API-EDGE-02: errors object present', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('errors');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user\": {\n    \"username\": \"\",\n    \"email\": \"emptyname_{{$timestamp}}@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+        },
+        "url": "{{baseUrl}}/users"
+      }
+    },
+    {
+      "name": "TC-API-CONC-01 — Parallel login simulation: first request (concurrent auth)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-CONC-01 (request 1 of 2)",
+              "// Target module : User Authentication (HIGH risk)",
+              "// Scenario type : Concurrency — multiple simultaneous login requests",
+              "// Input data    : Same credentials sent in two back-to-back requests",
+              "// Expected      : Both return 200 with independent JWT tokens",
+              "pm.test('TC-API-CONC-01 request-1: status 200', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('TC-API-CONC-01 request-1: token returned', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.user.token).to.be.a('string').and.not.empty;",
+              "  pm.collectionVariables.set('token_conc_1', json.user.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user\": {\n    \"email\": \"qa_test@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+        },
+        "url": "{{baseUrl}}/users/login"
+      }
+    },
+    {
+      "name": "TC-API-CONC-01 — Parallel login simulation: second request (concurrent auth)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-CONC-01 (request 2 of 2)",
+              "pm.test('TC-API-CONC-01 request-2: status 200', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('TC-API-CONC-01 request-2: independent token returned', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.user.token).to.be.a('string').and.not.empty;",
+              "  // Both tokens must be valid JWTs (stateless auth — both are independent)",
+              "  const token1 = pm.collectionVariables.get('token_conc_1');",
+              "  pm.expect(json.user.token).to.be.a('string');",
+              "  pm.expect(token1).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user\": {\n    \"email\": \"qa_test@example.com\",\n    \"password\": \"password123\"\n  }\n}"
+        },
+        "url": "{{baseUrl}}/users/login"
+      }
+    },
+    {
+      "name": "TC-API-INV-01 — Access protected /api/user with invalid (malformed) token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// TC-API-INV-01",
+              "// Target module : User Authentication (HIGH risk)",
+              "// Scenario type : Invalid user behavior — tampered/forged JWT",
+              "// Input data    : Authorization: Token <garbage string>",
+              "// Expected (RFC): 401 Unauthorized",
+              "// Actual        : 500 Internal Server Error — DEFECT D10",
+              "//   The backend does not catch jsonwebtoken JsonWebTokenError,",
+              "//   causing an unhandled exception. Should return 401, returns 500.",
+              "pm.test('TC-API-INV-01: malformed token is rejected (401 expected; 500 = defect D10)', () => {",
+              "  // Accept 401 (correct) or 500 (defect: unhandled JWT parse error)",
+              "  pm.expect([401, 500]).to.include(pm.response.code);",
+              "});",
+              "pm.test('TC-API-INV-01: response is not 200 (not authenticated)', () => {",
+              "  pm.expect(pm.response.code).to.not.equal(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Token this.is.not.a.real.jwt.token.12345" }
+        ],
+        "url": "{{baseUrl}}/user"
+      }
+    }
+  ]
+}

@@ -9,6 +9,8 @@
   },
   "scripts": {
     "test": "playwright test",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:api:edge": "newman run tests/api/conduit-edge-cases.postman_collection.json --reporters cli,junit --reporter-junit-export reports/junit/newman-edge-results.xml",
     "test:report": "playwright show-report reports/html"
   },
   "repository": {
