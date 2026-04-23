@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-23T15:56:13.919Z",
+  "timestamp": "2026-04-23T16:57:08.575Z",
   "target": "slugify() helper function",
   "testSuite": "tests/unit/slugify.test.mjs",
   "totalMutants": 10,
@@ -14,7 +14,7 @@
       "type": "Method removal",
       "description": "Remove toLowerCase() — slugify no longer lowercases input",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.3863ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2223ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1528ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1871ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.7552ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1501ms)\n  ✔ whitespace-only string returns empty string after trim (0.0826ms)\n✔ TC-UNIT"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.8228ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2094ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.2361ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1893ms)\n✖ TC-UNIT-01 — slugify standard inputs (3.3773ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.2616ms)\n  ✔ whitespace-only string returns empty string after trim (0.0872ms)\n✔ TC-UNIT"
     },
     {
       "id": "M-02",
@@ -23,7 +23,7 @@
       "type": "Method removal",
       "description": "Remove trim() — slugify does not strip leading/trailing whitespace",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.7089ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.8508ms)\n  ✔ slugify(\"Hello_world\") === \"hello-world\" (0.0961ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.1163ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.6702ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1389ms)\n  ✖ whitespace-only string returns empty string after trim (0.1991ms)\n✖ TC-UNIT"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.6153ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.9114ms)\n  ✔ slugify(\"Hello_world\") === \"hello-world\" (0.0882ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.1184ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.5504ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1236ms)\n  ✖ whitespace-only string returns empty string after trim (0.1866ms)\n✖ TC-UNIT"
     },
     {
       "id": "M-03",
@@ -32,7 +32,7 @@
       "type": "Regex alteration",
       "description": "Remove underscore from regex — underscore is no longer replaced",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.638ms)\n  ✔ slugify(\"  Hello World  \") === \"hello-world\" (0.0942ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.7333ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.1256ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.3774ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1164ms)\n  ✔ whitespace-only string returns empty string after trim (0.0779ms)\n✔ TC-UNIT-"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.6105ms)\n  ✔ slugify(\"  Hello World  \") === \"hello-world\" (0.0886ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.8176ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.1379ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.5438ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1142ms)\n  ✔ whitespace-only string returns empty string after trim (0.0692ms)\n✔ TC-UNIT"
     },
     {
       "id": "M-04",
@@ -41,7 +41,7 @@
       "type": "Constant alteration",
       "description": "Replace dash with underscore in replacement string",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.6642ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.3041ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1977ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.164ms)\n✖ TC-UNIT-01 — slugify standard inputs (3.3248ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.195ms)\n  ✔ whitespace-only string returns empty string after trim (0.1047ms)\n✔ TC-UNIT-0"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.5246ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2115ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1534ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1541ms)\n✖ TC-UNIT-01 — slugify standard inputs (3.0005ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1617ms)\n  ✔ whitespace-only string returns empty string after trim (0.113ms)\n✔ TC-UNIT-"
     },
     {
       "id": "M-05",
@@ -50,7 +50,7 @@
       "type": "Return value modification",
       "description": "Always return empty string — function is effectively a no-op",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.2221ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.1807ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1429ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1212ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.4376ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1551ms)\n  ✔ whitespace-only string returns empty string after trim (0.0999ms)\n✔ TC-UNIT"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.4734ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2365ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1711ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1325ms)\n✖ TC-UNIT-01 — slugify standard inputs (3.0218ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.2078ms)\n  ✔ whitespace-only string returns empty string after trim (0.0896ms)\n✔ TC-UNIT"
     },
     {
       "id": "M-06",
@@ -59,7 +59,7 @@
       "type": "Logical operator change",
       "description": "Change global flag to non-global — only first match is replaced",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.5848ms)\n  ✔ slugify(\"  Hello World  \") === \"hello-world\" (0.2431ms)\n  ✔ slugify(\"Hello_world\") === \"hello-world\" (0.0888ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.0888ms)\n✔ TC-UNIT-01 — slugify standard inputs (1.8536ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1134ms)\n  ✔ whitespace-only string returns empty string after trim (0.0733ms)\n✔ TC-UNIT"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.7561ms)\n  ✔ slugify(\"  Hello World  \") === \"hello-world\" (0.2296ms)\n  ✔ slugify(\"Hello_world\") === \"hello-world\" (0.0881ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.2636ms)\n✔ TC-UNIT-01 — slugify standard inputs (2.3057ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1724ms)\n  ✔ whitespace-only string returns empty string after trim (0.1414ms)\n✔ TC-UNIT"
     },
     {
       "id": "M-07",
@@ -68,7 +68,7 @@
       "type": "Return value modification",
       "description": "Return input unchanged — skip all transformation",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.3397ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2002ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.134ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1187ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.5968ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1407ms)\n  ✖ whitespace-only string returns empty string after trim (0.1694ms)\n✖ TC-UNIT-"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.3429ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2156ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1429ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1266ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.761ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.2356ms)\n  ✖ whitespace-only string returns empty string after trim (0.2198ms)\n✖ TC-UNIT-"
     },
     {
       "id": "M-08",
@@ -77,7 +77,7 @@
       "type": "Logical operator change",
       "description": "Invert null-guard: return tagList when article EXISTS (swap condition)",
       "status": "SURVIVED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.6771ms)\n  ✔ slugify(\"  Hello World  \") === \"hello-world\" (0.0897ms)\n  ✔ slugify(\"Hello_world\") === \"hello-world\" (0.0727ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.0945ms)\n✔ TC-UNIT-01 — slugify standard inputs (1.7402ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1236ms)\n  ✔ whitespace-only string returns empty string after trim (0.0834ms)\n✔ TC-UNIT"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✔ slugify(\"Hello World\") === \"hello-world\" (0.7069ms)\n  ✔ slugify(\"  Hello World  \") === \"hello-world\" (0.1143ms)\n  ✔ slugify(\"Hello_world\") === \"hello-world\" (0.1052ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.1335ms)\n✔ TC-UNIT-01 — slugify standard inputs (1.9357ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1198ms)\n  ✔ whitespace-only string returns empty string after trim (0.0855ms)\n✔ TC-UNIT"
     },
     {
       "id": "M-09",
@@ -86,7 +86,7 @@
       "type": "Boundary value alteration",
       "description": "Replace regex character class with dot — matches any char including word chars",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.3151ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2189ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1386ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.1529ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.7064ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.2699ms)\n  ✔ whitespace-only string returns empty string after trim (0.084ms)\n✔ TC-UNIT-"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.2851ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.1959ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1618ms)\n  ✖ slugify(\"Hello-world\") === \"hello-world\" (0.121ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.5532ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.2387ms)\n  ✔ whitespace-only string returns empty string after trim (0.1197ms)\n✔ TC-UNIT-"
     },
     {
       "id": "M-10",
@@ -95,7 +95,7 @@
       "type": "Method removal",
       "description": "Remove replace() call entirely — special chars not sanitised",
       "status": "KILLED",
-      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.4595ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2126ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1478ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.1108ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.869ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1567ms)\n  ✔ whitespace-only string returns empty string after trim (0.0772ms)\n✔ TC-UNIT-"
+      "output": "▶ TC-UNIT-01 — slugify standard inputs\n  ✖ slugify(\"Hello World\") === \"hello-world\" (1.3104ms)\n  ✖ slugify(\"  Hello World  \") === \"hello-world\" (0.2056ms)\n  ✖ slugify(\"Hello_world\") === \"hello-world\" (0.1341ms)\n  ✔ slugify(\"Hello-world\") === \"hello-world\" (0.0986ms)\n✖ TC-UNIT-01 — slugify standard inputs (2.5839ms)\n▶ TC-UNIT-02 — slugify edge: empty / whitespace inputs\n  ✔ empty string returns empty string (0.1426ms)\n  ✔ whitespace-only string returns empty string after trim (0.1038ms)\n✔ TC-UNIT"
     }
   ]
 }
