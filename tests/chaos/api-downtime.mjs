@@ -19,9 +19,30 @@
 
 import http from 'node:http';
 
-const BASE_URL  = process.env.BASE_URL  || 'http://localhost:3001';
-const BASELINE  = process.argv.includes('--baseline');
-const TIMEOUT_MS = 5000;
+const CONFIGURED_URL = process.env.BASE_URL || 'http://localhost:3001';
+const BASELINE       = process.argv.includes('--baseline');
+const TIMEOUT_MS     = 5000;
+
+// ── Auto-detect: if server is up, point to a dead port so test always works ───
+function checkAlive(url) {
+  return new Promise((resolve) => {
+    const u = new URL(url);
+    const req = http.request({ hostname: u.hostname, port: u.port || 80, path: '/api/tags', method: 'GET', timeout: 2000 }, () => resolve(true));
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+
+const serverUp = await checkAlive(CONFIGURED_URL);
+
+// If server is alive and we're NOT in baseline mode — redirect to a dead port
+// so downtime simulation always produces ECONNREFUSED as expected.
+const BASE_URL = (!BASELINE && serverUp)
+  ? CONFIGURED_URL.replace(/:\d+/, ':19999')  // dead port
+  : CONFIGURED_URL;
+
+const AUTO_REDIRECT = !BASELINE && serverUp;
 
 // ── Utility: HTTP request with timeout ───────────────────────────────────────
 function request(method, path, body = null, headers = {}) {
@@ -142,6 +163,10 @@ async function runChaosDowntime() {
   console.log('  CHAOS TEST — API Downtime Simulation');
   console.log(`  Mode    : ${BASELINE ? 'BASELINE (server should be UP)' : 'CHAOS (server should be DOWN)'}`);
   console.log(`  Target  : ${BASE_URL}`);
+  if (AUTO_REDIRECT) {
+    console.log(`  Note    : server was UP on ${CONFIGURED_URL} → auto-redirected`);
+    console.log(`            to dead port :19999 to simulate downtime`);
+  }
   console.log(`  Timeout : ${TIMEOUT_MS}ms per request`);
   console.log('═══════════════════════════════════════════════════════════════');
   console.log('');
