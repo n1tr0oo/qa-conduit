@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-04-23T16:03:20.961Z",
+  "suites": [
+    {
+      "name": "API Downtime",
+      "status": "PASSED",
+      "fault": "Connection refused (server down)",
+      "exitCode": 0,
+      "durationSec": 0.1
+    },
+    {
+      "name": "Database Failure",
+      "status": "PASSED",
+      "fault": "500/503 DB connection error",
+      "exitCode": 0,
+      "durationSec": 8.1
+    },
+    {
+      "name": "Network Latency",
+      "status": "SKIPPED",
+      "fault": "Artificial 0–3000ms request delay",
+      "exitCode": null
+    },
+    {
+      "name": "Resource Exhaustion",
+      "status": "SKIPPED",
+      "fault": "Concurrent flood (1–100 VUs)",
+      "exitCode": null
+    }
+  ],
+  "passed": 2,
+  "failed": 0,
+  "skipped": 2
+}

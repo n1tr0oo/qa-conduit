@@ -5,25 +5,34 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-#  Job dependency graph:
+#  Job dependency graph (Assignment 3 — updated):
 #
-#  build ──────────────────────────────────────┐
-#                                              ├─→ unit-tests ──────┐
-#                                              ├─→ api-tests ───────┤
-#                                              └─→ e2e-tests ───────┤
-#                                                                    │
-#                                              ┌─────────────────────┤
-#                                              │                     │
-#                                        allure-report         quality-gate
-#                                        (if: always)          (if: always)
+#  build ──────────────────────────────────────────────────────────────┐
+#                                                                      │
+#                              ┌─────────────────────────────────────── ┤
+#                              ├─→ unit-tests ──────┐                   │
+#                              ├─→ api-tests ───────┤                   │
+#                              ├─→ e2e-tests ───────┤                   │
+#                              ├─→ mutation-tests ──┤  ← NEW (A3)       │
+#                              └─→ chaos-tests ─────┤  ← NEW (A3)       │
+#                                                   │                   │
+#                              ┌────────────────────┘                   │
+#                              │                                        │
+#                        allure-report                           performance-tests
+#                        (if: always)                            (manual trigger only)
+#                        quality-gate
+#                        (if: always)
 #
-#  Stage 1 — build        : install deps, cache node_modules, verify structure
-#  Stage 2 — tests        : unit / api / e2e run in parallel, each uploads artifacts
-#  Stage 3 — reporting    : allure-report merges results → dashboard
-#             gate        : quality-gate parses JUnit XML → pass/fail verdict
+#  Stage 1 — build             : install deps, cache, verify structure
+#  Stage 2 — functional tests  : unit / api / e2e (unchanged)
+#  Stage 2 — mutation-tests    : NEW — slugify mutant injection, score ≥70%
+#  Stage 2 — chaos-tests       : NEW — downtime + db-failure (no live server needed)
+#  Stage 3 — reporting         : allure-report + quality-gate (updated gates)
+#  Stage 4 — perf-tests        : NEW — k6 load tests (manual trigger, needs k6)
 #
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -102,6 +111,17 @@ jobs:
 
       - name: Run unit tests
         run: node --test tests/unit/*.test.mjs
+
+      - name: Generate unit test Allure results
+        run: node tests/unit/generate-allure-results.mjs
+
+      - name: Upload Unit Allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-unit
+          path: allure-results/
+          retention-days: 7
 
   # ════════════════════════════════════════════════════════════════════════════
   # STAGE 2 — API TESTS (integration level)
@@ -366,7 +386,7 @@ jobs:
   allure-report:
     name: "Report — Allure Dashboard"
     runs-on: ubuntu-latest
-    needs: [unit-tests, api-tests, e2e-tests]
+    needs: [unit-tests, api-tests, e2e-tests, mutation-tests, chaos-tests]
     if: always()
 
     steps:
@@ -385,6 +405,13 @@ jobs:
           key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       # ── Download all Allure result artifacts ─────────────────────────────
+      - name: Download Unit Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-unit
+          path: allure-results/
+        continue-on-error: true
+
       - name: Download API Allure results
         uses: actions/download-artifact@v4
         with:
@@ -435,7 +462,7 @@ jobs:
   quality-gate:
     name: "Gate — Quality Thresholds"
     runs-on: ubuntu-latest
-    needs: [unit-tests, api-tests, e2e-tests]
+    needs: [unit-tests, api-tests, e2e-tests, mutation-tests, chaos-tests]
     if: always()
     permissions:
       checks: write
@@ -525,6 +552,24 @@ jobs:
             GATE_FAILED=1
           fi
 
+          # ── QG05: Mutation Tests ─────────────────────────────────────────
+          MUTATION_RESULT="${{ needs.mutation-tests.result }}"
+          if [ "$MUTATION_RESULT" = "success" ]; then
+            echo " QG05  | Mutation score ≥70% | PASSED ($MUTATION_RESULT)"
+          else
+            echo " QG05  | Mutation score ≥70% | FAILED ($MUTATION_RESULT)"
+            GATE_FAILED=1
+          fi
+
+          # ── QG06: Chaos Tests ────────────────────────────────────────────
+          CHAOS_RESULT="${{ needs.chaos-tests.result }}"
+          if [ "$CHAOS_RESULT" = "success" ]; then
+            echo " QG06  | Chaos tests pass  | PASSED ($CHAOS_RESULT)"
+          else
+            echo " QG06  | Chaos tests pass  | FAILED ($CHAOS_RESULT)"
+            GATE_FAILED=1
+          fi
+
           echo "────────────────────────────────────────"
           if [ "$GATE_FAILED" -eq 1 ]; then
             echo " RESULT → QUALITY GATE FAILED — deploy blocked"
@@ -543,3 +588,203 @@ jobs:
           path: reports/junit/*.xml
           reporter: java-junit
           fail-on-error: false
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2 — MUTATION TESTS (Assignment 3)
+  # Pure Node.js — no database, no HTTP server needed.
+  # Injects 10 mutants into the slugify function and runs the unit test suite
+  # against each. Fails the job if mutation score drops below 70%.
+  # ════════════════════════════════════════════════════════════════════════════
+  mutation-tests:
+    name: "Test — Mutation (slugify, score ≥70%)"
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore QA node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Run mutation tests
+        run: node tests/mutation/run-mutation-tests.mjs --verbose
+
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/mutation-report.json
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2 — CHAOS TESTS (Assignment 3)
+  # Tests that do not require the live Express backend:
+  #   - api-downtime   : verifies ECONNREFUSED is returned gracefully
+  #   - db-failure     : mock server returns 500/503; checks JSON error format
+  # Network-latency and resource-exhaustion require a live backend so they
+  # are skipped in CI (run locally with `npm run test:chaos:latency`).
+  # ════════════════════════════════════════════════════════════════════════════
+  chaos-tests:
+    name: "Test — Chaos / Fault Injection (offline scenarios)"
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore QA node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Run chaos — API downtime scenario
+        run: node tests/chaos/api-downtime.mjs
+
+      - name: Run chaos — Database failure scenario
+        run: node tests/chaos/db-failure.mjs
+
+      - name: Upload chaos report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chaos-report
+          path: reports/chaos/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 4 — PERFORMANCE TESTS (Assignment 3)
+  # Requires k6 CLI and a live backend. Triggered manually via workflow_dispatch
+  # to avoid running on every push (expensive and environment-dependent).
+  # ════════════════════════════════════════════════════════════════════════════
+  performance-tests:
+    name: "Test — Performance (K6 load tests)"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, api-tests, e2e-tests, mutation-tests, chaos-tests]
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduit
+          POSTGRES_DB: conduit_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -qq
+          sudo apt-get install -y k6
+
+      - name: Clone & start Conduit backend
+        run: |
+          git clone https://github.com/TonyMckes/conduit-realworld-example-app.git conduit-app
+          cd conduit-app && npm install
+        env:
+          NODE_ENV: development
+          PORT: 3001
+          JWT_KEY: ci_test_secret_key
+          DEV_DB_USERNAME: conduit
+          DEV_DB_PASSWORD: conduit
+          DEV_DB_NAME: conduit_ci
+          DEV_DB_HOSTNAME: localhost
+          DEV_DB_DIALECT: postgres
+
+      - name: Start backend
+        working-directory: conduit-app/backend
+        env:
+          NODE_ENV: development
+          PORT: 3001
+          JWT_KEY: ci_test_secret_key
+          DEV_DB_USERNAME: conduit
+          DEV_DB_PASSWORD: conduit
+          DEV_DB_NAME: conduit_ci
+          DEV_DB_HOSTNAME: localhost
+          DEV_DB_DIALECT: postgres
+        run: node index.js > /tmp/backend.log 2>&1 &
+
+      - name: Wait for backend
+        run: npx wait-on http://localhost:3001/api/tags --timeout 120000
+
+      - name: Seed test user
+        run: |
+          curl -s -X POST http://localhost:3001/api/users \
+            -H "Content-Type: application/json" \
+            -d '{"user":{"username":"qa_test","email":"qa_test@example.com","password":"password123"}}' \
+            -o /dev/null -w "HTTP %{http_code}\n"
+
+      - name: Run K6 — Auth load test (normal)
+        run: |
+          mkdir -p tests/performance/results
+          k6 run --env SCENARIO=normal \
+            --out json=tests/performance/results/auth-normal.json \
+            tests/performance/k6/auth-load-test.js
+        continue-on-error: true
+
+      - name: Run K6 — Feed load test (normal)
+        run: |
+          k6 run --env SCENARIO=normal \
+            --out json=tests/performance/results/feed-normal.json \
+            tests/performance/k6/feed-load-test.js
+        continue-on-error: true
+
+      - name: Run K6 — Articles load test (normal)
+        run: |
+          k6 run --env SCENARIO=normal \
+            --out json=tests/performance/results/articles-normal.json \
+            tests/performance/k6/articles-load-test.js
+        continue-on-error: true
+
+      - name: Run K6 — Full scenario (spike)
+        run: |
+          k6 run --env SCENARIO=spike \
+            --out json=tests/performance/results/full-spike.json \
+            tests/performance/k6/full-scenario.js
+        continue-on-error: true
+
+      - name: Upload K6 results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-performance-results
+          path: tests/performance/results/
+          retention-days: 14
