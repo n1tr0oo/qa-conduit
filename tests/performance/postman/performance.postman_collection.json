@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "Conduit — Performance Tests",
+    "description": "Focused load-testing collection for the 3 high-risk modules:\nAuthentication (HIGH), Article Management (HIGH), Global Feed (HIGH).\n\nUsed by tests/performance/run-perf.mjs — Newman programmatic API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001/api" },
+    { "key": "token",   "value": "" },
+    { "key": "slug",    "value": "" }
+  ],
+  "item": [
+    {
+      "name": "AUTH-P01: Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 500ms', () => pm.expect(pm.response.responseTime).to.be.below(500));",
+              "const body = pm.response.json();",
+              "if (body.user && body.user.token) {",
+              "  pm.collectionVariables.set('token', body.user.token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"user\":{\"email\":\"qa_test@example.com\",\"password\":\"password123\"}}"
+        },
+        "url": { "raw": "{{baseUrl}}/users/login", "host": ["{{baseUrl}}"], "path": ["users","login"] }
+      }
+    },
+    {
+      "name": "AUTH-P02: Get current user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 300ms', () => pm.expect(pm.response.responseTime).to.be.below(300));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Token {{token}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/user", "host": ["{{baseUrl}}"], "path": ["user"] }
+      }
+    },
+    {
+      "name": "FEED-P01: Global feed (default)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 500ms', () => pm.expect(pm.response.responseTime).to.be.below(500));",
+              "pm.test('body has articles array', () => {",
+              "  const b = pm.response.json();",
+              "  pm.expect(b).to.have.property('articles');",
+              "  pm.expect(b.articles).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/articles", "host": ["{{baseUrl}}"], "path": ["articles"] }
+      }
+    },
+    {
+      "name": "FEED-P02: Paginated feed (limit=10&offset=0)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 500ms', () => pm.expect(pm.response.responseTime).to.be.below(500));",
+              "pm.test('at most 10 articles', () => {",
+              "  const b = pm.response.json();",
+              "  pm.expect(b.articles.length).to.be.at.most(10);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/articles?limit=10&offset=0",
+          "host": ["{{baseUrl}}"],
+          "path": ["articles"],
+          "query": [
+            { "key": "limit",  "value": "10" },
+            { "key": "offset", "value": "0" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "FEED-P03: Tag filter",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 500ms', () => pm.expect(pm.response.responseTime).to.be.below(500));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/articles?tag=qa",
+          "host": ["{{baseUrl}}"],
+          "path": ["articles"],
+          "query": [{ "key": "tag", "value": "qa" }]
+        }
+      }
+    },
+    {
+      "name": "FEED-P04: Tags list",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 300ms', () => pm.expect(pm.response.responseTime).to.be.below(300));",
+              "pm.test('body has tags array', () => {",
+              "  const b = pm.response.json();",
+              "  pm.expect(b).to.have.property('tags');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/tags", "host": ["{{baseUrl}}"], "path": ["tags"] }
+      }
+    },
+    {
+      "name": "ART-P01: Create article",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('articleTitle', 'Perf Test ' + Date.now() + ' VU' + Math.floor(Math.random()*9999));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.test('response time < 800ms', () => pm.expect(pm.response.responseTime).to.be.below(800));",
+              "const b = pm.response.json();",
+              "if (b.article && b.article.slug) {",
+              "  pm.collectionVariables.set('slug', b.article.slug);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type",  "value": "application/json" },
+          { "key": "Authorization", "value": "Token {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"article\":{\"title\":\"{{articleTitle}}\",\"description\":\"Performance test\",\"body\":\"Load test article body.\",\"tagList\":[\"perf\"]}}"
+        },
+        "url": { "raw": "{{baseUrl}}/articles", "host": ["{{baseUrl}}"], "path": ["articles"] }
+      }
+    },
+    {
+      "name": "ART-P02: Get article by slug",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('response time < 300ms', () => pm.expect(pm.response.responseTime).to.be.below(300));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/articles/{{slug}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["articles", "{{slug}}"]
+        }
+      }
+    },
+    {
+      "name": "ART-P03: Delete article",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 204', () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});",
+              "pm.test('response time < 500ms', () => pm.expect(pm.response.responseTime).to.be.below(500));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Token {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/articles/{{slug}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["articles", "{{slug}}"]
+        }
+      }
+    }
+  ]
+}

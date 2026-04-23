@@ -25,12 +25,14 @@
     "test:chaos:db": "node tests/chaos/db-failure.mjs",
     "test:chaos:latency": "node tests/chaos/network-latency.mjs",
     "test:chaos:exhaustion": "node tests/chaos/resource-exhaustion.mjs",
-    "test:perf:auth": "k6 run tests/performance/k6/auth-load-test.js",
-    "test:perf:articles": "k6 run tests/performance/k6/articles-load-test.js",
-    "test:perf:feed": "k6 run tests/performance/k6/feed-load-test.js",
-    "test:perf:full": "k6 run tests/performance/k6/full-scenario.js",
-    "test:perf:full:stress": "k6 run --env SCENARIO=stress tests/performance/k6/full-scenario.js",
-    "test:perf:full:spike": "k6 run --env SCENARIO=spike tests/performance/k6/full-scenario.js"
+    "test:perf": "node tests/performance/run-perf.mjs",
+    "test:perf:normal": "node tests/performance/run-perf.mjs --scenario normal",
+    "test:perf:peak": "node tests/performance/run-perf.mjs --scenario peak",
+    "test:perf:spike": "node tests/performance/run-perf.mjs --scenario spike",
+    "test:perf:endurance": "node tests/performance/run-perf.mjs --scenario endurance",
+    "test:perf:k6:auth": "k6 run tests/performance/k6/auth-load-test.js",
+    "test:perf:k6:feed": "k6 run tests/performance/k6/feed-load-test.js",
+    "test:perf:k6:full": "k6 run tests/performance/k6/full-scenario.js"
   },
   "repository": {
     "type": "git",

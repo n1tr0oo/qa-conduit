@@ -1,0 +1,105 @@
+{
+  "scenario": "normal",
+  "label": "Normal Load",
+  "description": "1 virtual user × 30 iterations — steady-state baseline",
+  "vus": 1,
+  "iterations": 30,
+  "delayMs": 200,
+  "baseUrl": "http://localhost:3001",
+  "timestamp": "2026-04-23T16:32:50.743Z",
+  "wallTimeSec": 85.2,
+  "thresholdP95": 500,
+  "passed": true,
+  "overall": {
+    "total": 270,
+    "avg": 12,
+    "p50": 6,
+    "p95": 61,
+    "p99": 63,
+    "errRate": "0.0",
+    "failures": 0
+  },
+  "byRequest": [
+    {
+      "name": "AUTH-P01: Login",
+      "total": 30,
+      "avg": 62,
+      "p50": 61,
+      "p95": 64,
+      "p99": 80,
+      "errRate": "0.0"
+    },
+    {
+      "name": "AUTH-P02: Get current user",
+      "total": 30,
+      "avg": 3,
+      "p50": 2,
+      "p95": 4,
+      "p99": 6,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P01: Global feed (default)",
+      "total": 30,
+      "avg": 8,
+      "p50": 8,
+      "p95": 11,
+      "p99": 20,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P02: Paginated feed (limit=10&offset=0)",
+      "total": 30,
+      "avg": 8,
+      "p50": 7,
+      "p95": 12,
+      "p99": 13,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P03: Tag filter",
+      "total": 30,
+      "avg": 4,
+      "p50": 4,
+      "p95": 5,
+      "p99": 7,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P04: Tags list",
+      "total": 30,
+      "avg": 2,
+      "p50": 2,
+      "p95": 3,
+      "p99": 3,
+      "errRate": "0.0"
+    },
+    {
+      "name": "ART-P01: Create article",
+      "total": 30,
+      "avg": 8,
+      "p50": 7,
+      "p95": 11,
+      "p99": 13,
+      "errRate": "0.0"
+    },
+    {
+      "name": "ART-P02: Get article by slug",
+      "total": 30,
+      "avg": 6,
+      "p50": 6,
+      "p95": 10,
+      "p99": 10,
+      "errRate": "0.0"
+    },
+    {
+      "name": "ART-P03: Delete article",
+      "total": 30,
+      "avg": 4,
+      "p50": 4,
+      "p95": 9,
+      "p99": 9,
+      "errRate": "0.0"
+    }
+  ]
+}

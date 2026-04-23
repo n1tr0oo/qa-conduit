@@ -1,0 +1,113 @@
+{
+  "timestamp": "2026-04-23T16:39:17.983Z",
+  "baseUrl": "http://localhost:3001",
+  "scenarios": [
+    {
+      "scenario": "endurance",
+      "label": "Endurance",
+      "description": "1 virtual user × 100 iterations — memory / drift check",
+      "vus": 1,
+      "iterations": 100,
+      "delayMs": 100,
+      "baseUrl": "http://localhost:3001",
+      "timestamp": "2026-04-23T16:39:17.982Z",
+      "wallTimeSec": 198.5,
+      "thresholdP95": 600,
+      "passed": true,
+      "overall": {
+        "total": 900,
+        "avg": 11,
+        "p50": 5,
+        "p95": 60,
+        "p99": 65,
+        "errRate": "0.0",
+        "failures": 0
+      },
+      "byRequest": [
+        {
+          "name": "AUTH-P01: Login",
+          "total": 100,
+          "avg": 62,
+          "p50": 60,
+          "p95": 72,
+          "p99": 95,
+          "errRate": "0.0"
+        },
+        {
+          "name": "AUTH-P02: Get current user",
+          "total": 100,
+          "avg": 2,
+          "p50": 2,
+          "p95": 3,
+          "p99": 6,
+          "errRate": "0.0"
+        },
+        {
+          "name": "FEED-P01: Global feed (default)",
+          "total": 100,
+          "avg": 7,
+          "p50": 6,
+          "p95": 11,
+          "p99": 16,
+          "errRate": "0.0"
+        },
+        {
+          "name": "FEED-P02: Paginated feed (limit=10&offset=0)",
+          "total": 100,
+          "avg": 7,
+          "p50": 6,
+          "p95": 11,
+          "p99": 13,
+          "errRate": "0.0"
+        },
+        {
+          "name": "FEED-P03: Tag filter",
+          "total": 100,
+          "avg": 4,
+          "p50": 3,
+          "p95": 5,
+          "p99": 6,
+          "errRate": "0.0"
+        },
+        {
+          "name": "FEED-P04: Tags list",
+          "total": 100,
+          "avg": 2,
+          "p50": 2,
+          "p95": 3,
+          "p99": 4,
+          "errRate": "0.0"
+        },
+        {
+          "name": "ART-P01: Create article",
+          "total": 100,
+          "avg": 7,
+          "p50": 7,
+          "p95": 11,
+          "p99": 14,
+          "errRate": "0.0"
+        },
+        {
+          "name": "ART-P02: Get article by slug",
+          "total": 100,
+          "avg": 6,
+          "p50": 5,
+          "p95": 9,
+          "p99": 10,
+          "errRate": "0.0"
+        },
+        {
+          "name": "ART-P03: Delete article",
+          "total": 100,
+          "avg": 4,
+          "p50": 4,
+          "p95": 7,
+          "p99": 9,
+          "errRate": "0.0"
+        }
+      ]
+    }
+  ],
+  "passed": 1,
+  "failed": 0
+}

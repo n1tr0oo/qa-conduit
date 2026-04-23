@@ -1,0 +1,105 @@
+{
+  "scenario": "spike",
+  "label": "Spike Load",
+  "description": "15 parallel users × 5 iterations — sudden traffic surge",
+  "vus": 15,
+  "iterations": 5,
+  "delayMs": 0,
+  "baseUrl": "http://localhost:3001",
+  "timestamp": "2026-04-23T16:33:45.724Z",
+  "wallTimeSec": 5.8,
+  "thresholdP95": 1500,
+  "passed": false,
+  "overall": {
+    "total": 675,
+    "avg": 49,
+    "p50": 36,
+    "p95": 156,
+    "p99": 249,
+    "errRate": "1.2",
+    "failures": 8
+  },
+  "byRequest": [
+    {
+      "name": "AUTH-P01: Login",
+      "total": 75,
+      "avg": 150,
+      "p50": 141,
+      "p95": 278,
+      "p99": 312,
+      "errRate": "0.0"
+    },
+    {
+      "name": "AUTH-P02: Get current user",
+      "total": 75,
+      "avg": 40,
+      "p50": 21,
+      "p95": 145,
+      "p99": 198,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P01: Global feed (default)",
+      "total": 75,
+      "avg": 43,
+      "p50": 41,
+      "p95": 86,
+      "p99": 156,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P02: Paginated feed (limit=10&offset=0)",
+      "total": 75,
+      "avg": 58,
+      "p50": 56,
+      "p95": 80,
+      "p99": 232,
+      "errRate": "5.3"
+    },
+    {
+      "name": "FEED-P03: Tag filter",
+      "total": 75,
+      "avg": 24,
+      "p50": 24,
+      "p95": 33,
+      "p99": 142,
+      "errRate": "0.0"
+    },
+    {
+      "name": "FEED-P04: Tags list",
+      "total": 75,
+      "avg": 11,
+      "p50": 10,
+      "p95": 24,
+      "p99": 31,
+      "errRate": "0.0"
+    },
+    {
+      "name": "ART-P01: Create article",
+      "total": 75,
+      "avg": 47,
+      "p50": 50,
+      "p95": 64,
+      "p99": 92,
+      "errRate": "0.0"
+    },
+    {
+      "name": "ART-P02: Get article by slug",
+      "total": 75,
+      "avg": 42,
+      "p50": 42,
+      "p95": 54,
+      "p99": 69,
+      "errRate": "0.0"
+    },
+    {
+      "name": "ART-P03: Delete article",
+      "total": 75,
+      "avg": 25,
+      "p50": 26,
+      "p95": 35,
+      "p99": 51,
+      "errRate": "0.0"
+    }
+  ]
+}
