@@ -1,0 +1,127 @@
+# Docker Compose — Conduit QA Environment
+# Provides full reproducible stack for all experimental tests (A3).
+#
+# Services:
+#   postgres   — PostgreSQL 15 database
+#   backend    — Express.js backend (port 3001)
+#   frontend   — Vite React frontend (port 3000)
+#
+# Usage:
+#   docker compose up -d                  # start full stack
+#   docker compose up -d postgres backend # start backend only (API tests)
+#   docker compose logs -f backend        # stream backend logs
+#   docker compose down                   # tear down
+#
+# For chaos scenarios see: docker-compose.chaos.yml
+#   docker compose -f docker-compose.yml -f docker-compose.chaos.yml up
+
+version: '3.9'
+
+services:
+
+  # ── PostgreSQL 15 ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: conduit_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     conduit
+      POSTGRES_PASSWORD: conduit
+      POSTGRES_DB:       conduit_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U conduit -d conduit_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Express.js backend ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../conduit-realworld-example-app
+      dockerfile: ./backend/Dockerfile
+    container_name: conduit_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV:          development
+      PORT:              3001
+      JWT_KEY:           dev_secret_key_change_in_prod
+      DEV_DB_USERNAME:   conduit
+      DEV_DB_PASSWORD:   conduit
+      DEV_DB_NAME:       conduit_dev
+      DEV_DB_HOSTNAME:   postgres
+      DEV_DB_DIALECT:    postgres
+    ports:
+      - '3001:3001'
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "require(\"http\").get(\"http://localhost:3001/api/tags\", r => r.statusCode === 200 ? process.exit(0) : process.exit(1)).on(\"error\", () => process.exit(1))"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # ── Vite React frontend ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../conduit-realworld-example-app
+      dockerfile: ./frontend/Dockerfile
+    container_name: conduit_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: http://localhost:3001/api
+    ports:
+      - '3000:3000'
+
+  # ── DB seeder (one-shot) ──────────────────────────────────────────────────
+  seeder:
+    build:
+      context: ../conduit-realworld-example-app
+      dockerfile: ./backend/Dockerfile
+    container_name: conduit_seeder
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV:        development
+      DEV_DB_USERNAME: conduit
+      DEV_DB_PASSWORD: conduit
+      DEV_DB_NAME:     conduit_dev
+      DEV_DB_HOSTNAME: postgres
+      DEV_DB_DIALECT:  postgres
+    entrypoint: >
+      sh -c "
+        node -e \"
+          const http = require('http');
+          function post(path, body) {
+            return new Promise((res, rej) => {
+              const req = http.request({hostname:'backend',port:3001,path,method:'POST',headers:{'Content-Type':'application/json'}}, r => {
+                let d=''; r.on('data',c=>d+=c); r.on('end',()=>res(JSON.parse(d)));
+              });
+              req.on('error', rej);
+              req.write(JSON.stringify(body));
+              req.end();
+            });
+          }
+          (async () => {
+            const reg = await post('/api/users', {user:{username:'qa_test',email:'qa_test@example.com',password:'password123'}});
+            const token = reg.user?.token;
+            if (!token) { console.log('Seeder: user may already exist'); return; }
+            await post('/api/articles', {article:{title:'QA Seed Article',description:'Seed',body:'Seed body',tagList:['qa','performance']}});
+            console.log('Seeder: done');
+          })().catch(e => console.error('Seeder error:', e.message));
+        \"
+      "
+    restart: 'no'
+
+volumes:
+  postgres_data:
+    driver: local

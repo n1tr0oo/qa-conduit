@@ -1,0 +1,107 @@
+# Docker Compose override — Chaos / Fault Injection Scenarios
+# Extends the base docker-compose.yml with fault injection services.
+#
+# ── Scenarios ─────────────────────────────────────────────────────────────────
+#
+# SCENARIO 1: Network latency injection (Toxiproxy)
+#   docker compose -f docker-compose.yml -f docker-compose.chaos.yml \
+#     --profile latency up -d
+#   Access backend via port 13001 — Toxiproxy adds configurable latency.
+#   Set latency:  curl -X POST http://localhost:8474/proxies/backend/toxics \
+#     -d '{"name":"latency","type":"latency","attributes":{"latency":1000}}'
+#   Remove:       curl -X DELETE http://localhost:8474/proxies/backend/toxics/latency
+#
+# SCENARIO 2: Database failure (stop postgres)
+#   docker compose stop postgres
+#   # Run chaos tests: node tests/chaos/db-failure.mjs
+#   docker compose start postgres
+#
+# SCENARIO 3: Resource exhaustion (ulimits + CPU throttle)
+#   docker compose -f docker-compose.yml -f docker-compose.chaos.yml \
+#     --profile exhaustion up -d backend-throttled
+#   Backend limited to 0.25 CPU and 128MB RAM.
+#
+# SCENARIO 4: API downtime (stop backend)
+#   docker compose stop backend
+#   node tests/chaos/api-downtime.mjs
+#   docker compose start backend
+
+version: '3.9'
+
+services:
+
+  # ── Toxiproxy — network fault injection ───────────────────────────────────
+  # Listens on :13001 (backend proxy) and :8474 (admin API).
+  # Use admin API to inject: latency, bandwidth, timeout, jitter, reset_peer.
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    container_name: conduit_toxiproxy
+    profiles: [latency, chaos]
+    ports:
+      - '8474:8474'   # Toxiproxy admin API
+      - '13001:13001' # Backend proxy (forwards to backend:3001)
+    depends_on:
+      backend:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        /toxiproxy-server &
+        sleep 2
+        /toxiproxy-cli create backend --listen 0.0.0.0:13001 --upstream backend:3001
+        echo 'Toxiproxy: backend proxy ready on :13001'
+        wait
+      "
+
+  # ── Resource-constrained backend (CPU + memory limits) ────────────────────
+  backend-throttled:
+    build:
+      context: ../conduit-realworld-example-app
+      dockerfile: ./backend/Dockerfile
+    container_name: conduit_backend_throttled
+    profiles: [exhaustion]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV:          development
+      PORT:              3002
+      JWT_KEY:           dev_secret_key_change_in_prod
+      DEV_DB_USERNAME:   conduit
+      DEV_DB_PASSWORD:   conduit
+      DEV_DB_NAME:       conduit_dev
+      DEV_DB_HOSTNAME:   postgres
+      DEV_DB_DIALECT:    postgres
+    ports:
+      - '3002:3002'
+    deploy:
+      resources:
+        limits:
+          cpus:   '0.25'   # 25% of one CPU core
+          memory: 128M     # 128 MB RAM (triggers OOM under flood)
+    ulimits:
+      nofile:
+        soft: 256
+        hard: 512          # Max open file descriptors (limits connection pool)
+    restart: unless-stopped
+
+  # ── Chaos runner (one-shot container that executes all chaos tests) ────────
+  chaos-runner:
+    image: node:20-alpine
+    container_name: conduit_chaos_runner
+    profiles: [chaos]
+    depends_on:
+      backend:
+        condition: service_healthy
+    working_dir: /qa
+    volumes:
+      - ./:/qa
+    environment:
+      BASE_URL: http://backend:3001
+    command: >
+      sh -c "
+        npm ci --quiet &&
+        node tests/chaos/api-downtime.mjs --baseline &&
+        node tests/chaos/network-latency.mjs &&
+        node tests/chaos/resource-exhaustion.mjs
+      "
+    restart: 'no'
