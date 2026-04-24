@@ -58,7 +58,7 @@ jobs:
           cache: 'npm'
 
       - name: Install QA dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       - name: Verify test directory structure
         run: |
@@ -100,7 +100,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       - name: Run unit tests
         run: node --test tests/unit/*.test.mjs
@@ -155,7 +155,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       # ── App setup ────────────────────────────────────────────────────────
       - name: Clone Conduit app
@@ -276,7 +276,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       # ── App setup ────────────────────────────────────────────────────────
       - name: Clone Conduit app
@@ -389,7 +389,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       # ── Download all Allure result artifacts ─────────────────────────────
       - name: Download Unit Allure results
@@ -601,7 +601,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       - name: Run manual mutation tests (slugify — 10 mutants)
         run: node tests/mutation/run-mutation-tests.mjs --verbose
@@ -641,7 +641,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       - name: Run chaos — API downtime scenario
         run: node tests/chaos/api-downtime.mjs
