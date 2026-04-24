@@ -55,15 +55,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install QA dependencies
-        run: npm install
-
-      - name: Cache QA node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        run: npm ci
 
       - name: Verify test directory structure
         run: |
@@ -102,12 +97,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Restore QA node_modules cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run unit tests
         run: node --test tests/unit/*.test.mjs
@@ -159,12 +152,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Restore QA node_modules cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
 
       # ── App setup ────────────────────────────────────────────────────────
       - name: Clone Conduit app
@@ -282,12 +273,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Restore QA node_modules cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
 
       # ── App setup ────────────────────────────────────────────────────────
       - name: Clone Conduit app
@@ -397,12 +386,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Restore QA node_modules cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
 
       # ── Download all Allure result artifacts ─────────────────────────────
       - name: Download Unit Allure results
@@ -433,7 +420,7 @@ jobs:
           ls allure-results/ 2>/dev/null || echo "No results found"
 
       - name: Generate Allure report
-        run: npx allure generate allure-results --clean -o allure-report
+        run: ./node_modules/.bin/allure generate allure-results --clean -o allure-report
 
       - name: Print Allure report summary
         run: |
@@ -469,6 +456,9 @@ jobs:
       contents: read
 
     steps:
+      - name: Checkout QA repo
+        uses: actions/checkout@v4
+
       - name: Download API JUnit results
         uses: actions/download-artifact@v4
         with:
@@ -608,18 +598,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Restore QA node_modules cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run manual mutation tests (slugify — 10 mutants)
         run: node tests/mutation/run-mutation-tests.mjs --verbose
 
       - name: Run Stryker mutation tests (53 mutants — vitest runner)
-        run: npx stryker run
+        run: ./node_modules/.bin/stryker run
 
       - name: Upload mutation reports
         uses: actions/upload-artifact@v4
@@ -650,12 +638,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Restore QA node_modules cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: qa-node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run chaos — API downtime scenario
         run: node tests/chaos/api-downtime.mjs
